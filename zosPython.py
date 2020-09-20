@@ -7,29 +7,36 @@ from matplotlib.patches import Rectangle # only used for plotting in setTRLed
 import clr, os, winreg
 from itertools import islice
 import pdb
-# import ZOSAPI
 
 
 
 
-
-
-#%% TODO NYA FUNKTIONER, MER ATT GÖRA
-
-# * Scriptsnutt för att ställa in POP detektor zoom storlek. POP inställningar via funktion istf att behöva klicka
-#* POP script för att kunna köra inställningar POP o spara bild. Bra för att kunna köra över natten och testa massa olika inställingar.
-#* Den displayar alla bilder med lista på inställningar så kan man se vilken som är den bästa
-
-# * MF weight adjust: Gjorde väl detta tidigare? Kan hänga ihop med MFContributions (O:\My Drive\HOME\IT\PYTHON\PYTHON ZEMAX\PYZDDE\meritFcn Weight Change)
-# * Labba med att läsa ut data från analysfönster, t.ex. MTF, gör exempelkod
-# * Förstå varför ZOSAPI ibland inte funkar
 
 #
+#%%
+""" TODO
+- Physical optics. Set settings. Run analysis. Save data/image
+- Merit function weight adjust. Adjust weight for part of the MF
 
-#%% z-FUNCTIONS
 
+"""
+
+
+#%%
 
 def zInitInteractive():
+
+    """
+    Function for initiation
+
+    Parameters: -
+    Returns: (TheConnection, TheApplication, TheSystem, ZOSAPI)
+    Notes:
+    Examples:
+        (TheConnection, TheApplication, TheSystem, ZOSAPI) = zInitInteractive()
+        TheSystemData=TheSystem.SystemData
+    """
+
     aKey = winreg.OpenKey(winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER), r"Software\Zemax", 0, winreg.KEY_READ)
     zemaxData = winreg.QueryValueEx(aKey, 'ZemaxRoot')
     NetHelper = os.path.join(os.sep, zemaxData[0], r'ZOS-API\Libraries\ZOSAPI_NetHelper.dll')
@@ -51,11 +58,8 @@ def zInitInteractive():
         raise Exception('Cannot find OpticStudio')
     clr.AddReference(os.path.join(os.sep, zemaxDir, r'ZOSAPI.dll'))
     clr.AddReference(os.path.join(os.sep, zemaxDir, r'ZOSAPI_Interfaces.dll'))
-    import ZOSAPI # JCMOD: ZOSAPI availability is necessary in other functions, it is therefore moved to top of file
-
-
+    import ZOSAPI
     TheConnection = ZOSAPI.ZOSAPI_Connection()
-
     if TheConnection is None:
         raise Exception("Unable to intialize NET connection to ZOSAPI")
     TheApplication = TheConnection.ConnectAsExtension(0)
@@ -71,7 +75,6 @@ def zInitInteractive():
       ' Mode:', TheSystem.Mode,
       '',TheSystem.SystemFile, '\n'
       )
-
 
     return TheConnection, TheApplication, TheSystem, ZOSAPI
 
@@ -118,6 +121,9 @@ def transpose(data):
 
 # EX: (surfNum [int], surf [ILDERow]) = zGetSEQSurf(TheSystem, 'surfaceName' ,printSurfacesFound=True)
 def zGetSEQSurf(TS, comment_, printSurfacesFound=False):
+
+
+
     LDE=TS.LDE
     for ss in range(0,LDE.NumberOfSurfaces):
         # print(LDE.GetSurfaceAt(ss).Comment)
@@ -142,11 +148,19 @@ def zGetNSCObject(TS, comment_, printSurfacesFound=True):
 #saveRays: False / 'filename'
 def zNSCRaytrace(TS, splitRays=False, scatterRays=False, usePolarization=False, ignoreErrors=False, saveRays=False, saveRaysFilename='rays01.ZRD', rayFilter='', clearDetectors=True, numberOfCores=8, printStatus=True):
 
-    #TODO:
-    # beep sound
-    # random seed
-    # return värde - vaddå? detektorenergi?
+    """
+    Run a Non-sequential raytracing
 
+    Parameters: (TheSystem, optional_varaibles)
+    Returns: True
+    Notes:
+    Examples:
+        zNSCRaytrace(TheSystem)
+    ToDo:
+        Random seed
+        Beep sound when ready
+        Return something that makes sense. Detector energy?
+    """
 
     if splitRays: usePolarization=True
     NSCRayTrace = TS.Tools.OpenNSCRayTrace()
@@ -184,6 +198,16 @@ def zNSCRaytrace(TS, splitRays=False, scatterRays=False, usePolarization=False, 
 
 
 def zObjAny2ObjNum(TS,objAny):
+    """
+
+    Parameters: TheSystem, object_comment_string / object_number / NSC_object
+    Returns: NSC object number
+    Notes:
+    Examples:
+        zObjAny2ObjNum(TheSystem, 'myDetector') → 8
+    ToDo:
+    """
+
     if type(objAny)==str: # detObj can be a comment, row number, or object
         (objNo, objAny)=zGetNSCObject(TS, objAny)
     elif type(obj)==int:
@@ -192,8 +216,17 @@ def zObjAny2ObjNum(TS,objAny):
         objNo=objAny.ObjectNumber
     return objNo
 
-#Ex: NCEObject = zObjAny2ObjObj(TheSystem, objNumber/objectName)
+
 def zObjAny2ObjObj(TS,objAny):
+    """
+
+    Parameters: TheSystem, object_comment_string / object_number / NSC_object
+    Returns: NSC object
+    Notes:
+    Examples:
+        zObjAny2ObjNum(TheSystem, 'myDetector') → NSC_object
+    ToDo:
+    """
     if type(objAny)==str: # detObj can be a comment, row number, or object
         (objNo, obj)=zGetNSCObject(TS, objAny)
     elif type(obj)==int:
@@ -205,6 +238,20 @@ def zObjAny2ObjObj(TS,objAny):
     return obj
 
 def zReadDetector(TS, detObj, smoothing=0, plotData=True):
+    """
+
+    Parameters:
+        TheSystem
+        detobject_comment_string / object_number / NSC_object
+        ..
+    Returns: detector data
+    Notes:
+    Examples:
+        zReadDetector(TheSystem, 'myDetector') → 88
+    ToDo:
+        Plot contour lines
+    """
+
     print('Getting detector data')
     objNo=zObjAny2ObjNum(TS,detObj)
     obj = TS.NCE.GetObjectAt(objNo)
@@ -239,11 +286,26 @@ def zReadDetector(TS, detObj, smoothing=0, plotData=True):
         ax.set_ylabel('[mm]', fontsize=8)
     return detectorData
 
-    # TODO
-    # Plot contour lines
 
 
 def zSetNSCParameter(TS, objAny, par, val):
+    """
+
+    Parameters:
+        TheSystem
+        NSC_object
+        parameter
+        value
+        ..
+    Returns: -
+    Notes:
+    Examples:
+        zSetNSCParameter(TheSystem, 'myLens', 3, 1)
+    ToDo:
+        support for zpos, material mm
+
+    """
+
     TheNCE=TS.NCE
     objNo=zObjAny2ObjNum(TS, objAny)
     objCell=TheNCE.GetObjectAt(objNo).GetObjectCell(par+10)
@@ -255,16 +317,35 @@ def zSetNSCParameter(TS, objAny, par, val):
     else:
         objCell.Value=val
 
-    #TODO
-    #support for zpos, material mm
 
 # Start At: -1: DMFS; 0: Last line
 def zSEQOptWizard(TS, Criterion='Spot', SpatialFrequency=100, XSWeight=1, YTWeigh=1, Type='RMS', Reference='Centroid', UseGaussianQuadrature=True, UseRectangularArray=False, Rings=3, Arms='6arms', Obscuration=0, GridSizeNxN=4, DeleteVignetted=True, UseGlassBoundaryValues=False, GlassMin=0, GlassMax=1000, GlassEdgeThickness =0, UseAirBoundaryValues=False, AirMin=0, AirMax=1000, AirEdgeThickness =0, StartAt=1, OverallWeight=1, ConfigurationNumber=1, UseAllConfigurations =False, FieldNumber=1, UseAllFields=False, AssumeAxialSymmetry=False, IgnoreLateralColor=False, AddFavoriteOperands=False, OptimizeForManufacturingYield=False, ManufacturingYieldWeight=0, MaxDistortionPct=False):
 
-# TODO
-# Att BLNK Tags with '* IMG_CONF#..' just after the configuration change, so that the MF weight check automatically can tag this region
-# How to do distinction between wiz1 and wiz2?
-# Ignore lateral color option is not available in the interface → email zemax support
+
+"""
+    Generate Merit Function using Wizard
+
+    Parameters:
+        TheSystem
+        Criterion: 'Wavefront', 'Contrast', 'Spot', 'Angular'
+        ..
+        Type: 'RMS', 'PTV'
+        Reference: 'Centroid', 'ChiefRay', 'Unreferenced'
+        ..
+        Arms: '6arms', '8arms', '10arms', '12arms'
+        ..
+        StartAt: -1 (starts at first DMFS row); 0 (stars at last line in MF); other (starts at that line)
+    Returns: -
+    Notes:
+    Examples:
+            zSEQOptWizard(TheSystem, ConfigurationNumber=2, OverallWeight=1, StartAt=-1, Criterion='Spot', AssumeAxialSymmetry=False, Rings=5)
+    ToDo:
+        Add BLNK Tags with '* IMG_CONF#..' just after the configuration change, so that the MF weight check  automatically can tag this region
+        How to do distinction between wiz1 and wiz2?
+        Ignore lateral color option is not available in the interface → email zemax support
+
+    """
+
 
     TheMFE = TS.MFE
     OptWizard = TheMFE.SEQOptimizationWizard2
@@ -357,6 +438,20 @@ def zSEQOptWizard(TS, Criterion='Spot', SpatialFrequency=100, XSWeight=1, YTWeig
 
 
 def zSEQMakeVariable(TS, surfList, variableOrFixed='variable', radiusOrThic='radius'):
+    """
+    Change LDE surface radius or thicknes to variable or fixed
+    Parameters:
+        TheSystem
+        List of surfaces, for example: (1,3,5)
+        variableOrFixed: 'variable', 'fixed'
+        radiusOrThic: 'radius', 'thic'
+
+    Returns: -
+    Notes:
+    Examples:
+        zSEQMakeVariable(TheSystem, (1,4,5), variableOrFixed='variable')
+    ToDo:
+    """
 
     columnDict={'radius':2, 'thic':3}
     col=columnDict.get(radiusOrThic, 'nan')
@@ -373,7 +468,21 @@ def zSEQMakeVariable(TS, surfList, variableOrFixed='variable', radiusOrThic='rad
             print('Error. Pls specify variable or fixed')
 
 def zSystemSettingts(TS, settingsNo):
-    # NB: no good to change syst settings when using MCONF
+
+
+    """
+    Change system settings, for example wavelengths, aperture, ray aiming
+
+    Parameters:
+        TheSystem
+        settingsNo: [int] representing a collection of system settings
+
+    Returns: -
+    Notes:
+    Examples:
+        zSEQMakeVariable(TheSystem, (1,4,5), variableOrFixed='variable')
+    ToDo:
+    """
     SystExplorer = TS.SystemData
 
     if settingsNo==1:
@@ -405,27 +514,24 @@ def zSystemSettingts(TS, settingsNo):
         print("Error: No such setting number")
         return False
 
-def zMFClockerOld(TS, noOfMFCalls=100):
-
-    TheMFE=TS.MFE
-    MFSum=0
-    t0 = datetime.now().timestamp()
-    timeList=[]
-    for m in np.arange(0,noOfMFCalls):
-        TheMFE.CalculateMeritFunction()
-        timeList.append(datetime.now().timestamp())
-
-    deltaTimeList=np.diff(timeList)
-    averageTimeStep=np.mean(deltaTimeList)
-    stDev=np.std(deltaTimeList)
-    print(f'Average time per MF calc: {averageTimeStep*1000:.2f} ms  stdv {stDev:.5f} ms ')
-
-    return averageTimeStep
 
 
 def zMFClocker(TS, samplingTime=5, algorithm='hammer'):
-    # TODO:
-        # Gör variant som kollar hur många system per sekund som testas. Det ger nog bättre info.
+    """
+    Use for testing the calculation time for a Merit Function
+
+
+    Parameters:
+        TheSystem
+        samplingTime: how long to run the calculation for
+
+    Returns: milliseconds calculation time per system
+    Notes:
+    Examples:
+        zMFClocker(TheSystem)
+    ToDo:
+        Add support for normal optimization (not hammer)
+    """
 
     t0 = datetime.now().timestamp()
     HammerOpt = TS.Tools.OpenHammerOptimization()
@@ -441,19 +547,27 @@ def zMFClocker(TS, samplingTime=5, algorithm='hammer'):
 
 def zOptimize(TS, optimizationType='Hammer', timeStepMinutes=20, totalRuntimeMinutes=10*60, numberOfCores=8, saveSystem=True):
 
-    # TODO
-    # How to break execution in a nice way? Funkar inte så bra:
-            #     import keyboard
-            # keyboard.on_press_key("p", lambda _:print("You pressed p..."))
-            # while True:
-                #     if keyboard.read_key() == "o":
-                    #         print("You pressed o")
-                    #         break
-    # After each cycle, calculate no of systems per second
-    # Support for global optimization
-    # Pres XC ?? to stop
-    # Plotta MF %, logskala kurva live
-    # skicka notification updates till mobben för att se hur MF förbättras
+    """
+    Run optmization
+
+
+    Parameters:
+        TheSystem
+        optimizationType: currently supports only 'Hammer'
+        timeStepMinutes: Time to run the optimzation before reporting MF value
+        totalRunTimeMinutes: Time to run the optimization before stop
+        numberOfCores:
+        saveSystem:
+
+    Examples:
+        zOptimize(TheSystem, timeStepMinutes=10, totalRuntimeMinutes=100)
+    ToDo:
+        How to break execution in a nice way?
+        Support for global optimization
+        Plot MF % live, logscale
+        Send notifications to mobile phone of current MF value
+
+    """
 
     dt = datetime.now().timestamp()
     print('Running Hammer Optimization')
@@ -501,11 +615,22 @@ def zOptimize(TS, optimizationType='Hammer', timeStepMinutes=20, totalRuntimeMin
 # In MFE use * in comment to make region eg.: * TRACKER
 def zMFContributions(TS, plotFigure=True, plotLogscale=False):
 
-# TODO
-#         # - handle cases when BLNK is blank
-#         # Add top list of which lines are worst contributors, color by type,
-#         # 100 first, bars to show how large they are, show in which conf they are,
-#         #
+    """
+    Calculates the summed MF value for different sections in the MFE. Sections are marked with text starting with * . For example:
+    BLNK  * LensDimensions
+    CTGT  ...
+
+    Parameters:
+        TheSystem
+
+    Examples:
+        zMFContributions(TheSystem)
+    ToDo:
+        handle cases when BLNK is blank
+        Add top list of which lines are worst contributors, color by type,
+        100 first, bars to show how large they are, show in which conf they are,
+
+    """
 
     TheMFE = TS.MFE
     contribSum=0
@@ -562,6 +687,20 @@ def zMFContributions(TS, plotFigure=True, plotLogscale=False):
 
 # zHideNSCObjects(TheSystem, rStart, rStop)
 def zHideNSCObjects(TS, objStart, objStop):
+    """
+    Hides NSC objects
+
+    Parameters:
+        TheSystem
+        objStart: row number of first object to hide
+        objStop:
+
+    Examples:
+        zHideNSCObjects(TheSystem, 6,8)
+    ToDo:
+
+    """
+
     TheMCE=TS.MCE
     for r in np.arange(objStop, objStart-1,-1):
         TheMCE.InsertNewOperandAt(1)
