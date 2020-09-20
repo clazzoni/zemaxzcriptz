@@ -1,7 +1,8 @@
 # zosPython
 
-zosPython.py is a collection of scripts that can be used for interacting with Zemax OpticStudio
+zosPython.py is a collection of functions that can be used for interacting with Zemax OpticStudio
 
+NB: Code is just for inspiration for custom scripts, etc. Lots of work left to do..
 
 ## Installation
 
