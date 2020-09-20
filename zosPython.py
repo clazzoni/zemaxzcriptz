@@ -9,9 +9,6 @@ from itertools import islice
 import pdb
 
 
-
-
-
 #
 #%%
 """ TODO
