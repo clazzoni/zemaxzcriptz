@@ -9,12 +9,17 @@ from itertools import islice
 import pdb
 
 
+
+
+
 #
 #%%
 """ TODO
 - Physical optics. Set settings. Run analysis. Save data/image
 - Merit function weight adjust. Adjust weight for part of the MF
 
+
+- läsa in alla mtrl och filtrera
 
 """
 
@@ -133,7 +138,7 @@ def zGetSEQSurf(TS, comment_, printSurfacesFound=False):
 # (objNum [int], obj [INCERow]) = zGetNSCObject(TheSystem, 'objName' , printSurfacesFound=True)
 def zGetNSCObject(TS, comment_, printSurfacesFound=True):
     TheNCE=TS.NCE
-    for nn in range(0,TheNCE.NumberOfObjects+1):
+    for nn in range(1,TheNCE.NumberOfObjects+1):
         oo = TheNCE.GetObjectAt(nn)
         if oo.Comment==comment_:
             print('Found: ', nn, '', comment_, '')
@@ -319,7 +324,7 @@ def zSetNSCParameter(TS, objAny, par, val):
 def zSEQOptWizard(TS, Criterion='Spot', SpatialFrequency=100, XSWeight=1, YTWeigh=1, Type='RMS', Reference='Centroid', UseGaussianQuadrature=True, UseRectangularArray=False, Rings=3, Arms='6arms', Obscuration=0, GridSizeNxN=4, DeleteVignetted=True, UseGlassBoundaryValues=False, GlassMin=0, GlassMax=1000, GlassEdgeThickness =0, UseAirBoundaryValues=False, AirMin=0, AirMax=1000, AirEdgeThickness =0, StartAt=1, OverallWeight=1, ConfigurationNumber=1, UseAllConfigurations =False, FieldNumber=1, UseAllFields=False, AssumeAxialSymmetry=False, IgnoreLateralColor=False, AddFavoriteOperands=False, OptimizeForManufacturingYield=False, ManufacturingYieldWeight=0, MaxDistortionPct=False):
 
 
-"""
+    """
     Generate Merit Function using Wizard
 
     Parameters:
@@ -340,7 +345,6 @@ def zSEQOptWizard(TS, Criterion='Spot', SpatialFrequency=100, XSWeight=1, YTWeig
         Add BLNK Tags with '* IMG_CONF#..' just after the configuration change, so that the MF weight check  automatically can tag this region
         How to do distinction between wiz1 and wiz2?
         Ignore lateral color option is not available in the interface → email zemax support
-
     """
 
 
@@ -728,6 +732,37 @@ def zChangeMFTargets(TS, rowStart, rowStop, target):
         Operand.Target=target
 
 
+def glassCheck(TS):
+    print(glasscheck)
+
+def thermalMoveObject(objDistFromOrigo_name, objThermalOffset_name, cte, dT):
+    printPos=1
+
+    (objDistFromOrigo_no , objDistFromOrigo_obj ) = zGetNSCObject(TheSystem, objDistFromOrigo_name , printSurfacesFound=True)
+    (objThermalOffset_no , objThermalOffset_obj ) = zGetNSCObject(TheSystem, objThermalOffset_name , printSurfacesFound=True)
+    xmov=objDistFromOrigo_obj.XPosition*cte*dT
+    ymov=objDistFromOrigo_obj.YPosition*cte*dT
+    zmov=objDistFromOrigo_obj.ZPosition*cte*dT
+
+    objThermalOffset_obj.XPosition=xmov
+    objThermalOffset_obj.YPosition=ymov
+    objThermalOffset_obj.ZPosition=zmov
+
+    if printPos:
+        print(objDistFromOrigo_name, ':   ',objThermalOffset_name)
+        print(f'movement: {xmov:.3f}  {ymov:.3f}  {zmov:.3f}')
+
+def thermalScaleObject(objToScale_name, cte, dT):
+    (objToScale_no , objToScale_obj ) = zGetNSCObject(TheSystem, objToScale_name , printSurfacesFound=True)
+
+    scaleFactor=1+cte*dT
+    objToScale_obj.GetObjectCell(ZOSAPI.Editors.NCE.ObjectColumn.Par1).DoubleValue=scaleFactor
+
+
+    #     objToScale_no=findNscObjectNo(objToScale_name)
+    #     scaleFactor=1+cte*dT
+    #     ln.zSetNSCParameter(1, objToScale_no, 1, scaleFactor)
+    print(f'scale: {scaleFactor:.6f}')
 
 #%% Useful code
 """
